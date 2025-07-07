@@ -29,7 +29,7 @@ class WorkflowCoordinatorFactory:
         alignerEngine = AlignerEngine(self.args.maxPairDistance)
         alignmentSegmentConflictResolver = AlignmentSegmentConflictResolver(
             SegmentChainer(
-                SequentialityScorer(self.args.segmentJoinMultiplier, self.args.sequentialityScore)))
+                SequentialityScorer(self.args.segmentJoinMultiplier, self.args.sequentialityScore, self.args.segmentCombinePenalty, self.args.secondaryMargin)))
         aligner = Aligner(scorer, segmentsFactory, alignerEngine, alignmentSegmentConflictResolver)
         if self.args.outputMode == "single":
             return _WorkflowCoordinator(

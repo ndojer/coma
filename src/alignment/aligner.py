@@ -94,8 +94,9 @@ class Aligner:
             peaks = [peaks]
         segments = list(itertools.chain.from_iterable(
             [self.getSegments(isReverse, p, query, reference) for p in peaks]))
+        queryPositions = list(query.getPositionsWithSiteIds(isReverse))
 
-        return AlignmentResultRow.create(self.segmentConflictResolver.resolveConflicts(segments),
+        return AlignmentResultRow.create(self.segmentConflictResolver.resolveConflicts(segments, queryPositions),
                                          query.moleculeId,
                                          reference.moleculeId,
                                          query.length,

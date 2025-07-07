@@ -31,6 +31,7 @@ class Args(NamedTuple):
     peaksCount: int
     disableProgressBar: bool
     outputMode: Literal["best", "separate", "joined", "all", "single"]
+    segmentCombinePenalty: int
     segmentJoinMultiplier: float
     sequentialityScore: int
 
@@ -140,6 +141,9 @@ class Args(NamedTuple):
 
         parser.add_argument("-pb", "--disableProgressBar", dest="disableProgressBar", action="store_true",
                             help="Disables the progress bar.")
+
+        parser.add_argument("-sc", "--segmentCombinePenalty", dest="segmentCombinePenalty", type=int, default=0,
+                            help="Constant component of penalty for combining segment.")
 
         parser.add_argument("-sj", "--segmentJoinMultiplier", dest="segmentJoinMultiplier", type=float, default=1,
                             help="Multiplier applied to segment sequentiality scores.")
