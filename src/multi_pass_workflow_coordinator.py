@@ -1,7 +1,7 @@
 import os
 from typing import List
 
-from src.alignment.aligner import Aligner
+from src.alignment.aligner import Aligner, ChainBuilder
 from src.alignment.alignment_results import AlignmentResultRow, AlignmentResults
 from src.args import Args
 from src.correlation.optical_map import OpticalMap
@@ -17,7 +17,7 @@ class _MultiPassWorkflowCoordinator(_WorkflowCoordinator):
                  args: Args,
                  primaryGenerator: SequenceGenerator,
                  secondaryGenerator: SequenceGenerator,
-                 aligner: Aligner,
+                 aligner: Aligner | ChainBuilder,
                  dispatcher: Dispatcher,
                  peaksSelector: PeaksSelector,
                  xmapReader: XmapReader):

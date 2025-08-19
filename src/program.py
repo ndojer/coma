@@ -48,6 +48,10 @@ class Program:
         self.xmapReader.writeAlignments(self.args.outputFile, alignmentResult, self.args)
         if self.args.outputFile is not sys.stdout:
             self.args.outputFile.close()
+        if self.args.outputIndels:
+            alignmentResult.write_indel_file(self.args.outputIndels)
+        if self.args.outputRests:
+            alignmentResult.write_rest_file(self.args.outputRests)
         return alignmentResult
 
     def __readMaps(self):
@@ -55,8 +59,9 @@ class Program:
         with self.args.referenceFile:
             self.referenceMaps = cmapReader.readReferences(self.args.referenceFile, self.args.referenceIds)
         with self.args.queryFile:
-            self.queryMaps = list(
-                map(lambda q: q.trim(), cmapReader.readQueries(self.args.queryFile, self.args.queryIds)))
+            self.queryMaps = cmapReader.readQueries(self.args.queryFile, self.args.queryIds)
+            # self.queryMaps = list(
+            #     map(lambda q: q.trim(), cmapReader.readQueries(self.args.queryFile, self.args.queryIds)))
 
 
 if __name__ == '__main__':

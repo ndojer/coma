@@ -5,7 +5,7 @@ from typing import List, Iterator
 
 from p_tqdm import p_imap
 
-from src.alignment.aligner import Aligner
+from src.alignment.aligner import Aligner, ChainBuilder
 from src.alignment.alignment_results import AlignmentResultRow
 from src.args import Args
 from src.correlation.optical_map import OpticalMap, InitialAlignment, CorrelationResult
@@ -18,7 +18,7 @@ from src.extensions.messages import CorrelationResultMessage, InitialAlignmentMe
 
 class _WorkflowCoordinator:
     def __init__(self, args: Args, primaryGenerator: SequenceGenerator, secondaryGenerator: SequenceGenerator,
-                 aligner: Aligner, dispatcher: Dispatcher, peaksSelector: PeaksSelector):
+                 aligner: Aligner | ChainBuilder, dispatcher: Dispatcher, peaksSelector: PeaksSelector):
         self.args = args
         self.primaryGenerator = primaryGenerator
         self.secondaryGenerator = secondaryGenerator
@@ -48,12 +48,14 @@ class _WorkflowCoordinator:
         return self.__getBestAlignment(alignmentResultRows)
 
     def __getPrimaryCorrelations(self, referenceMap: OpticalMap, queryMap: OpticalMap) -> Iterator[InitialAlignment]:
-        primaryCorrelation = queryMap.getInitialAlignment(referenceMap, self.primaryGenerator,
-                                                          self.args.minPeakDistance, self.args.peaksCount)
+        primaryCorrelation = queryMap.getInitialAlignment(referenceMap, 
+                                                          self.primaryGenerator,
+                                                          self.args.minPeakDistance, 
+                                                          self.args.primaryPeaksCount)
         self.dispatcher.dispatch(InitialAlignmentMessage(primaryCorrelation))
 
         primaryCorrelationReverse = queryMap.getInitialAlignment(
-            referenceMap, self.primaryGenerator, self.args.minPeakDistance, self.args.peaksCount, reverseStrand=True)
+            referenceMap, self.primaryGenerator, self.args.minPeakDistance, self.args.primaryPeaksCount, reverseStrand=True)
 
         self.dispatcher.dispatch(InitialAlignmentMessage(primaryCorrelationReverse))
         if any(primaryCorrelation.peaks):
@@ -65,7 +67,8 @@ class _WorkflowCoordinator:
         secondaryCorrelation = selectedPeak.primaryCorrelation.refine(selectedPeak.peak.position,
                                                                       self.secondaryGenerator,
                                                                       self.args.secondaryMargin,
-                                                                      self.args.peakHeightThreshold)
+                                                                      self.args.peakHeightThreshold,
+                                                                      self.args.secondaryPeaksCount)
 
         self.dispatcher.dispatch(CorrelationResultMessage(selectedPeak.primaryCorrelation, secondaryCorrelation, index))
         return selectedPeak.primaryCorrelation, secondaryCorrelation

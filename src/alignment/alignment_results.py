@@ -63,6 +63,36 @@ class AlignmentResults:
                         separate.extend(group)
         return joined, separate
 
+    def write_indel_file(self, file_name:str="indels.txt"):
+        """Function used to write indels files
+    
+        :param file_name: Name of output file, defaults to "indels.txt"
+        :type file_name: str, optional
+        """
+        lines_sorted = sorted([indel for row in self.rows for indel in row.indelList()],
+                        key = lambda indel: (indel[1], indel[3]))
+    
+        with open(file_name, "w") as f:
+            f.write("#Type \t Chromosome \t RefStart \t RefStop \t QueryId \t QueryStart \t QueryStop \t Length \n")
+            for line in lines_sorted:
+                line = [str(i) for i in line]
+                line = "\t".join(line)
+                f.write(line + "\n")
+
+    def write_rest_file(self, file_name:str="rests.txt"):
+        """Function used to write indels files
+    
+        :param file_name: Name of output file, defaults to "rests.txt"
+        :type file_name: str, optional
+        """
+        items_sorted = sorted([(row.queryId, row.rests) for row in self.rows])
+    
+        with open(file_name, "w") as f:
+            for item in items_sorted:
+                rests = item[1]
+                rest_lens = 'None' if rests is None else '\t'.join(map(str,map(len, rests)))
+                f.write("{}\t{}\n".format(item[0], rest_lens))
+
 
 class AlignmentResultRow(BenchmarkAlignment):
     @staticmethod
@@ -97,7 +127,9 @@ class AlignmentResultRow(BenchmarkAlignment):
                  referenceEndPosition: int = 0,
                  reverseStrand: bool = False,
                  confidence: float = 0.,
-                 alignedRest: bool = False):
+                 alignedRest: bool = False,
+                 indels: List = [],
+                 rests: List | None = None):
 
         self.queryId = queryId
         self.referenceId = referenceId
@@ -111,6 +143,8 @@ class AlignmentResultRow(BenchmarkAlignment):
         self.referenceLength = referenceLength
         self.segments = segments
         self.alignedRest = alignedRest
+        self.indels = indels
+        self.rests = rests
 
     @property
     def positions(self):
@@ -269,3 +303,16 @@ class AlignmentResultRow(BenchmarkAlignment):
                                              self.queryId, self.referenceId, self.queryLength, self.referenceLength,
                                              self.reverseStrand)
         return
+
+    def indelList(self):
+        indels = []
+        for leftAP, rightAP in self.indels:
+            refStart = leftAP.referencePosition()
+            refEnd = rightAP.referencePosition()
+            queryStart = leftAP.queryPosition
+            queryEnd = rightAP.queryPosition
+            diff = abs(refEnd-refStart) - abs(queryEnd-queryStart)
+            indelType = 'insertion' if diff<0 else 'deletion'
+            indels.append([indelType, 
+                       self.referenceId, refStart, refEnd, self.queryId,  queryStart, queryEnd, diff])
+        return indels
