@@ -322,7 +322,7 @@ class ChainBuilder:
            
         currAP = AllAlignmentPositions[maxIndex]
         if currAP.isStart():
-            print("Warning: no positive alignment score for", query.moleculeId, isReverse, query.length, peakShifts)
+            # print("Warning: no positive alignment score for", query.moleculeId, isReverse, query.length, peakShifts)
             # return AlignmentResultRow.create(AlignmentSegmentsWithResolvedConflicts([]),
             #                                  query.moleculeId,
             #                                  reference.moleculeId,

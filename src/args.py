@@ -129,7 +129,7 @@ class Args(NamedTuple):
         parser.add_argument("-su", "--unmatchedPenalty", dest="unmatchedPenalty", type=int, default=-250,
                             help="Penalty to a segment score for each unpaired reference or query position.")
 
-        parser.add_argument("-ms", "--minScore", dest="minScore", type=int, default=1000,
+        parser.add_argument("-ms", "--minScore", dest="minScore", type=int, default=20000,
                             help="Minimum score of a segment/alignment.")
 
         parser.add_argument("-bs", "--breakSegmentThreshold", dest="breakSegmentThreshold", type=int, default=1200,
