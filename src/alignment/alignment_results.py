@@ -90,8 +90,8 @@ class AlignmentResults:
         with open(file_name, "w") as f:
             for item in items_sorted:
                 rests = item[1]
-                rest_lens = 'None' if rests is None else '\t'.join(map(str,map(len, rests)))
-                f.write("{}\t{}\n".format(item[0], rest_lens))
+                rest_maps = 'None' if rests is None else '\t'.join(map(str, rests))
+                f.write("{}\t{}\n".format(item[0], rest_maps))
 
 
 class AlignmentResultRow(BenchmarkAlignment):

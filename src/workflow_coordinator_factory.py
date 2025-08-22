@@ -29,7 +29,7 @@ class WorkflowCoordinatorFactory:
             self.args.endReachingScore)
         if self.args.sequentialityScore==2:
             chainScorer = ChainScorer(self.args.segmentCombinePenalty, self.args.segmentJoinMultiplier, self.args.minScore)
-            aligner = ChainBuilder(scorer, chainScorer)
+            aligner = ChainBuilder(scorer, chainScorer, self.args.secondaryResolution*self.args.secondaryBlur)
         else:
             segmentsFactory = AlignmentSegmentsFactory(self.args.minScore, self.args.breakSegmentThreshold)
             alignerEngine = AlignerEngine(self.args.maxPairDistance)

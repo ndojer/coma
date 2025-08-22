@@ -228,9 +228,10 @@ class PeakAligner:
 
 
 class ChainBuilder:
-    def __init__(self, alPosScorer: AlignmentPositionScorer, chainScorer: ChainScorer) -> None:
+    def __init__(self, alPosScorer: AlignmentPositionScorer, chainScorer: ChainScorer, blurredEnd: int) -> None:
         self.alPosScorer = alPosScorer
         self.chainScorer = chainScorer
+        self.blurredEnd = blurredEnd+1
 
     def align(self, reference: OpticalMap, query: OpticalMap, peaks: List[Peak],
               isReverse: bool = False) -> AlignmentResultRow:
@@ -342,7 +343,9 @@ class ChainBuilder:
         revSegment = []
         if not lastAP.isEnd():
             revSegment.append(lastAP)
-            rests.append(list(filter(lambda pos: pos.position>lastAP.queryPosition, query.getPositionsWithSiteIds(isReverse))))
+            alignmentEnd = max(lastAP.queryPosition+1, AllAlignmentPositions[maxIndex+1].queryPosition - self.blurredEnd)
+            rests.append(query.getSubMap(isReverse, start = alignmentEnd))
+            # rests.append(list(filter(lambda pos: pos.position>lastAP.queryPosition, query.getPositionsWithSiteIds(isReverse))))
         # revSegment = [] if currAP.isEnd() else [currAP]
         segmentShift = currAP.queryShift
         currIndex = bestPrevIndexes[maxIndex]
@@ -360,12 +363,15 @@ class ChainBuilder:
                 assert not currAP.isStart()
                 revSegment = [currAP]
                 segmentShift = currAP.queryShift
+            maxIndex = currIndex
             currIndex = bestPrevIndexes[currIndex]
         assert revSegment
         revChain.append((segmentShift, reversed(revSegment)))
         firstAP = currAP
         if not firstAP.isStart():
-            rests.append(list(filter(lambda pos: pos.position<firstAP.queryPosition, query.getPositionsWithSiteIds(isReverse))))
+            alignmentStart = min(firstAP.queryPosition-1, AllAlignmentPositions[maxIndex-1].queryPosition + self.blurredEnd)
+            rests.append(query.getSubMap(isReverse, end = alignmentStart))
+            # rests.append(list(filter(lambda pos: pos.position<firstAP.queryPosition, query.getPositionsWithSiteIds(isReverse))))
         
         shiftToPeak = {peak.position: peak for peak in peaks}
         finalSegments = []

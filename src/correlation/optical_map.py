@@ -43,6 +43,24 @@ class OpticalMap:
                           self.positions[-1] - self.positions[0] + 1,
                           list(map(lambda p: p - self.positions[0], self.positions)))
 
+    def getSubMap(self, reverse: bool, start: int = 0, end: int = None):
+        if end is None:
+            end = self.length + 1
+        if reverse:
+            start, end = self.length + 1 - end, self.length + 1 - start
+        shift = self.shift
+        selPositions = []
+        for pos in self.positions:
+            if pos<start:
+                shift += 1
+            elif pos<end:
+                selPositions.append(int(pos-start))
+        return OpticalMap(
+            int(self.moleculeId), 
+            int(end - start), 
+            selPositions,
+            shift)
+
     def getPositionsWithSiteIds(self, reverse: bool = False):
         if reverse:
             i = len(self.positions) + self.shift
