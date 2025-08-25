@@ -35,6 +35,7 @@ class OpticalMap:
     length: int
     positions: List[int]
     shift: int = 0
+    bpShift: int = 0
 
     def trim(self):
         if not self.positions:
@@ -43,12 +44,13 @@ class OpticalMap:
                           self.positions[-1] - self.positions[0] + 1,
                           list(map(lambda p: p - self.positions[0], self.positions)))
 
-    def getSubMap(self, reverse: bool, start: int = 0, end: int = None):
+    def getSubMap(self, reverse: bool, start: int = 0, end: int = None, bpStart: int = 0):
         if end is None:
             end = self.length + 1
         if reverse:
             start, end = self.length + 1 - end, self.length + 1 - start
         shift = self.shift
+        bpShift = self.bpShift + bpStart
         selPositions = []
         for pos in self.positions:
             if pos<start:
@@ -59,7 +61,8 @@ class OpticalMap:
             int(self.moleculeId), 
             int(end - start), 
             selPositions,
-            shift)
+            shift,
+            bpShift)
 
     def getPositionsWithSiteIds(self, reverse: bool = False):
         if reverse:
