@@ -389,8 +389,10 @@ class ChainBuilder:
         #                                  reference.length,
         #                                  isReverse)
 
-        queryStartPosition = (lastAP if isReverse else firstAP).queryPosition + query.bpShift
-        queryEndPosition = (firstAP if isReverse else lastAP).queryPosition + query.bpShift
+        queryStartPosition = query.getAbsolutePosition(firstAP.queryPosition, isReverse)
+        queryEndPosition =  query.getAbsolutePosition(lastAP.queryPosition, isReverse)
+        if isReverse:
+            queryStartPosition, queryEndPosition = queryEndPosition, queryStartPosition
         referenceStartPosition = firstAP.referencePosition()
         referenceEndPosition = lastAP.referencePosition()
         return AlignmentResultRow(finalSegments, 

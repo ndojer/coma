@@ -211,55 +211,40 @@ class AlignmentResultRow(BenchmarkAlignment):
         return x
 
     def getUnalignedFragments(self, queries: List[OpticalMap]) -> List[OpticalMap]:
-        """Function used to return unaligned fragments of the query
-        if those parts constitute more than 0.2 of the whole query
-
-        :param queries: whole query which is being currently aligned
-        :type queries: List[OpticalMap]
-        :return: Unaligned parts of query in question
-        :rtype: List[OpticalMap]
-        """
-        if abs(self.queryStartPosition - self.queryEndPosition) > 0.8 * self.queryLength:
+        query = next((opticMap for opticMap in queries if opticMap.moleculeId == self.queryId), None)
+        if query is None or not self.alignedPairs:
             return []
-        else:
-            query = next((opticMap for opticMap in queries if opticMap.moleculeId == self.queryId), None)
-            if self.queryStartPosition == 0.0 or self.queryEndPosition == 0.0:
-                # Aligned positions are at the end/start
-                if self.orientation == '+':
-                    positions = query.positions[query.positions.index(self.queryEndPosition) - 2:]
-                    shift = len(query.positions) - len(positions)
-                    if self.queryEndPosition == 0.0:
-                        return []
-                else:
-                    alignedPairs = sorted(p for s in self.segments for p in s.positions if isinstance(p, AlignedPair))
-                    lastPair = alignedPairs[-1] if alignedPairs else AlignedPair.null
-                    positions = query.positions[: lastPair.query.siteId + 3]
-                    shift = 0
-                return [OpticalMap(self.queryId, self.queryLength, positions, shift=shift)]
-            else:
-                # Case where aligned fragment is in the middle
-                if self.orientation == '+':
-                    positions1 = query.positions[: query.positions.index(self.queryStartPosition) + 3]
-                    positions2 = query.positions[query.positions.index(self.queryEndPosition) - 2:]
 
-                else:
-                    alignedPairs = sorted(p for s in self.segments for p in s.positions if isinstance(p, AlignedPair))
-                    firstPair = alignedPairs[0] if alignedPairs else AlignedPair.null
-                    lastPair = alignedPairs[-1] if alignedPairs else AlignedPair.null
-                    positions1 = query.positions[: lastPair.query.siteId + 3]
-                    positions2 = query.positions[firstPair.query.siteId - 2:]
+        start_pos = min(self.queryStartPosition, self.queryEndPosition)
+        end_pos = max(self.queryStartPosition, self.queryEndPosition)
 
-                if len(positions1) >= 7 and len(positions2) >= 7:
-                    return [OpticalMap(self.queryId, self.queryLength, positions1, shift=0),
-                            OpticalMap(self.queryId, self.queryLength, positions2,
-                                       shift=len(query.positions) - len(positions2))]
-                elif len(positions1) >= 7:
-                    return [OpticalMap(self.queryId, self.queryLength, positions1, shift=0)]
-                elif len(positions2) >= 7:
-                    return [OpticalMap(self.queryId, self.queryLength, positions2,
-                                       shift=len(query.positions) - len(positions2))]
-                else:
-                    return []
+
+# Ustawiać indeks starrt jako mniejszy (a nie równy od najmniejszego a indeks end jako wiekszy niz najwiekszy)
+        try:
+            start_idx = query.positions.index(start_pos)
+            end_idx = query.positions.index(end_pos)
+        except ValueError:
+            print(start_pos, end_pos, query.positions, self.rests) #Kontrolny
+            return []
+
+        fragments: List[OpticalMap] = []
+
+        if start_idx > 0:
+            leading_positions = query.positions[:start_idx]
+            fragments.append(OpticalMap(self.queryId, self.queryLength, leading_positions, shift=0))
+
+        if end_idx < len(query.positions) - 1:
+            trailing_positions = query.positions[end_idx + 1:]
+            fragments.append(
+                OpticalMap(
+                    self.queryId,
+                    self.queryLength,
+                    trailing_positions,
+                    shift=len(query.positions) - len(trailing_positions)
+                )
+            )
+
+        return fragments
 
     def setAlignedRest(self, alignedRest: bool):
         self.alignedRest = alignedRest
