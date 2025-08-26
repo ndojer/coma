@@ -44,13 +44,20 @@ class OpticalMap:
                           self.positions[-1] - self.positions[0] + 1,
                           list(map(lambda p: p - self.positions[0], self.positions)))
 
-    def getSubMap(self, reverse: bool, start: int = 0, end: int = None, bpStart: int = 0):
-        if end is None:
-            end = self.length + 1
+    def getAbsolutePosition(self, position: int, reverse: bool):
+        moleculeEndPosition = self.length + 1
         if reverse:
-            start, end = self.length + 1 - end, self.length + 1 - start
+            position = moleculeEndPosition - position
+        return position + self.bpShift
+
+    def getSubMap(self, reverse: bool, start: int = 0, end: int = None):
+        moleculeEndPosition = self.length + 1
+        if end is None:
+            end = moleculeEndPosition
+        if reverse:
+            start, end = moleculeEndPosition - end, moleculeEndPosition - start
         shift = self.shift
-        bpShift = self.bpShift + bpStart
+        bpShift = self.bpShift + start
         selPositions = []
         for pos in self.positions:
             if pos<start:

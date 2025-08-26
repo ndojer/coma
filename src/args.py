@@ -36,6 +36,7 @@ class Args(NamedTuple):
     segmentCombinePenalty: int
     segmentJoinMultiplier: float
     sequentialityScore: int
+    passes: int    
 
     @staticmethod
     def parse(args: List[str] = None) -> Args:
@@ -167,5 +168,8 @@ class Args(NamedTuple):
         parser.add_argument("-ss", "--sequentialityScore", dest="sequentialityScore", type=int, default=2,
                             help="Segment sequentiality scoring function version.")
 
+        parser.add_argument("-ps", "--passes", dest="passes", type=int, default=2,
+                            help="Maximum number of alignment passes.")
+        
         args = parser.parse_args(args)
         return args  # type: ignore
