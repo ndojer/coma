@@ -233,6 +233,9 @@ class ChainBuilder:
         self.chainScorer = chainScorer
         self.blurredEnd = blurredEnd+1
 
+    def setFirstPass(self, isFirstPass):
+        self.chainScorer.setFirstPass(isFirstPass)
+
     def align(self, reference: OpticalMap, query: OpticalMap, peaks: List[Peak],
               isReverse: bool = False) -> AlignmentResultRow:
         if not peaks:
@@ -293,7 +296,7 @@ class ChainBuilder:
                     if prevCandidates:
                         prevScore, prev = max(prevCandidates)
                         indelLength = abs(prevShift-currShift)
-                        indelScore = -self.chainScorer.indelOpenPenalty - self.chainScorer.indelExtPenalty * indelLength
+                        indelScore = self.chainScorer.scoreIndel(indelLength)
                         currScores.append((prevScore + indelScore + currAP.score, prev))
             peakAPIndexes[currShift].append(i)
             bestScore, bestPrev = max(currScores)
@@ -307,7 +310,7 @@ class ChainBuilder:
                 maxScore = cumScore
                 maxIndex = i
         assert maxScore>0 and maxIndex is not None
-        if maxScore < self.chainScorer.minAlignmentScore:
+        if maxScore < self.chainScorer.minAlignmentScore():
             # return AlignmentResultRow.create(AlignmentSegmentsWithResolvedConflicts([]),
             #                                  query.moleculeId,
             #                                  reference.moleculeId,

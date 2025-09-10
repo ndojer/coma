@@ -26,7 +26,8 @@ class _WorkflowCoordinator:
         self.dispatcher = dispatcher
         self.peaksSelector = peaksSelector
 
-    def execute(self, referenceMaps: List[OpticalMap], queryMaps: List[OpticalMap]) -> List[AlignmentResultRow]:
+    def execute(self, referenceMaps: List[OpticalMap], queryMaps: List[OpticalMap], isFirstPass: bool=True) -> List[AlignmentResultRow]:
+        self.aligner.setFirstPass(isFirstPass)
         return [a for a in p_imap(
             lambda x: self.__align(*x),
             list((referenceMaps, q) for q in queryMaps),

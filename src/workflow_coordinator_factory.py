@@ -28,7 +28,7 @@ class WorkflowCoordinatorFactory:
             self.args.unmatchedPenalty,
             self.args.endReachingScore)
         if self.args.sequentialityScore==2:
-            chainScorer = ChainScorer(self.args.segmentCombinePenalty, self.args.segmentJoinMultiplier, self.args.minScore)
+            chainScorer = ChainScorer(self.args.segmentCombinePenalty, self.args.segmentJoinMultiplier, self.args.minScore, self.args.minSubsequentScore)
             aligner = ChainBuilder(scorer, chainScorer, self.args.secondaryResolution*self.args.secondaryBlur)
         else:
             segmentsFactory = AlignmentSegmentsFactory(self.args.minScore, self.args.breakSegmentThreshold)

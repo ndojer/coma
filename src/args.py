@@ -36,6 +36,9 @@ class Args(NamedTuple):
     segmentCombinePenalty: int
     segmentJoinMultiplier: float
     sequentialityScore: int
+    endReachingScore: int
+    minSubsequentScore: int
+    scalingRange: float
     passes: int    
 
     @staticmethod
@@ -74,6 +77,10 @@ class Args(NamedTuple):
                                 "    'best' - includes joined alignments when possible and best alignment based on "
                                 "        confidence when joined option is not available, "
                                 "    'all'-creates 3 files, one with joint alignments, and two with all obtained alignments.")
+
+        parser.add_argument("-sr", "--scalingRange", dest="scalingRange", type=float, default=0,
+                            help="The extent to which a molecule can be stretched or compressed relative to its length "
+                                "(default: no stretching).")
 
         parser.add_argument("-r1", "--primaryResolution", dest="primaryResolution", type=int, default=2000,
                             help="Scaling factor used to reduce the size of the vectorized form of the optical map "
@@ -132,6 +139,9 @@ class Args(NamedTuple):
 
         parser.add_argument("-ms", "--minScore", dest="minScore", type=int, default=20000,
                             help="Minimum score of a segment/alignment.")
+
+        parser.add_argument("-mss", "--minSubsequentScore", dest="minSubsequentScore", type=int, default=None,
+                            help="Minimum alignment score in subsequent passes.")
 
         parser.add_argument("-bs", "--breakSegmentThreshold", dest="breakSegmentThreshold", type=int, default=1200,
                             help="Alignment segments can be split into two if their score drops below this threshold.")

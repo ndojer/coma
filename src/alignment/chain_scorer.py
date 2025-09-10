@@ -7,8 +7,22 @@ class ChainScorer:
     def __init__(self, 
                  indelOpenPenalty: int,
                  indelExtPenalty: float,
-                 minAlignmentScore: int):
+                 minFirstPassScore: int,
+                 minSubsequentPassScore: int,
+                 isFirstPass: bool=True):
         self.indelOpenPenalty = indelOpenPenalty
         self.indelExtPenalty = indelExtPenalty
-        self.minAlignmentScore = minAlignmentScore
+        self.minFirstPassScore = minFirstPassScore
+        self.minSubsequentPassScore = minSubsequentPassScore
         self.ultimatePenalty = -10^6
+        self.isFirstPass = isFirstPass
+
+    def setFirstPass(self, isFirstPass):
+        self.isFirstPass = isFirstPass
+
+    def minAlignmentScore(self):
+        return self.minFirstPassScore if self.isFirstPass else self.minSubsequentPassScore
+
+    def scoreIndel(self, indelLength):
+        return -self.indelOpenPenalty - self.indelExtPenalty * indelLength
+
