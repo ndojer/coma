@@ -72,7 +72,7 @@ class _MultiPassWorkflowCoordinator(_WorkflowCoordinator):
                     print("No fragments for alignment")  # Kontrolny
                     break
 
-                new_rows = super().execute(referenceMaps, next_fragments)
+                new_rows = super().execute(referenceMaps, next_fragments, isFirstPass=False)
 
                 attempted = {f.moleculeId for f in next_fragments}
                 successful = {r.queryId for r in new_rows}
