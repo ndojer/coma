@@ -28,15 +28,23 @@ class _WorkflowCoordinator:
 
     def execute(self, referenceMaps: List[OpticalMap], queryMaps: List[OpticalMap], isFirstPass: bool=True) -> List[AlignmentResultRow]:
         self.aligner.setFirstPass(isFirstPass)
+        scRange = self.args.scalingRange if isFirstPass else 0
+        scParameters = scRange, self.args.primaryResolution
         return [a for a in p_imap(
             lambda x: self.__align(*x),
-            list((referenceMaps, q) for q in queryMaps),
+            list((referenceMaps, q, scParameters) for q in queryMaps),
+            # list((referenceMaps, list(q.getScaledMaps(scRange, self.args.primaryResolution))) for q in queryMaps),
             num_cpus=self.args.numberOfCpus,
             disable=self.args.disableProgressBar)
                 if a is not None and a.alignedPairs]
 
-    def __align(self, referenceMaps: List[OpticalMap], queryMap: OpticalMap) -> AlignmentResultRow | None:
-        primaryCorrelations = chain.from_iterable(self.__getPrimaryCorrelations(r, queryMap) for r in referenceMaps)
+    # def __align(self, referenceMaps: List[OpticalMap], queryMaps: List[OpticalMap]) -> AlignmentResultRow | None:
+    #     primaryCorrelations = chain.from_iterable(self.__getPrimaryCorrelations(r, q) for q in queryMaps for r in referenceMaps)
+
+    def __align(self, referenceMaps: List[OpticalMap], queryMap: OpticalMap, scParameters = (0,0)) -> AlignmentResultRow | None:
+        # primaryCorrelations = chain.from_iterable(self.__getPrimaryCorrelations(r, queryMap) for r in referenceMaps)
+        primaryCorrelations = chain.from_iterable(self.__getPrimaryCorrelations(r, q)
+                                                  for q in queryMap.getScaledMaps(*scParameters) for r in referenceMaps)
 
         bestPrimaryCorrelationPeaks = self.peaksSelector.selectPeaks(primaryCorrelations)
 
