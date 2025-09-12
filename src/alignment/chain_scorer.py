@@ -13,7 +13,7 @@ class ChainScorer:
         self.indelOpenPenalty = indelOpenPenalty
         self.indelExtPenalty = indelExtPenalty
         self.minFirstPassScore = minFirstPassScore
-        self.minSubsequentPassScore = minSubsequentPassScore
+        self.minSubsequentPassScore = minFirstPassScore if minSubsequentPassScore is None else minSubsequentPassScore
         self.ultimatePenalty = -10^6
         self.isFirstPass = isFirstPass
 

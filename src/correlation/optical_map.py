@@ -36,6 +36,7 @@ class OpticalMap:
     positions: List[int]
     shift: int = 0
     bpShift: int = 0
+    scFactor: float = 1
 
     def trim(self):
         if not self.positions:
@@ -43,6 +44,22 @@ class OpticalMap:
         return OpticalMap(self.moleculeId,
                           self.positions[-1] - self.positions[0] + 1,
                           list(map(lambda p: p - self.positions[0], self.positions)))
+
+    def getScaledMaps(self, scalingRange: float = 0, step: int = 1000):
+        yield self
+        stretch = 0
+        while stretch < scalingRange*self.length:
+            stretch += step
+            for i in [-1, 1]:
+                scLength = self.length + i*stretch
+                scFactor = scLength/self.length
+                scPositions =  [int(pos*scFactor) for pos in self.positions]
+                yield OpticalMap(self.moleculeId,
+                                 scLength,
+                                 scPositions,
+                                 self.shift,
+                                 self.bpShift,
+                                 scFactor)
 
     def getAbsolutePosition(self, position: int, reverse: bool):
         moleculeEndPosition = self.length + 1
