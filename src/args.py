@@ -82,8 +82,11 @@ class Args(NamedTuple):
                             help="The extent to which a molecule can be stretched or compressed relative to its length "
                                 "(default: no stretching).")
 
+        parser.add_argument("-st", "--scalingStep", dest="scalingStep", type=int, default=None,
+                            help="Stretching step of query molecule scaling (defaul: equals to parameter primaryResolution). ")
+
         parser.add_argument("-r1", "--primaryResolution", dest="primaryResolution", type=int, default=2000,
-                            help="Scaling factor used to reduce the size of the vectorized form of the optical map "
+                            help="Size of sequence intervals represented by a single item in the vectorized form of the optical map "
                                  "in the initial cross-correlation seeding step.")
 
         parser.add_argument("-b1", "--primaryBlur", dest="primaryBlur", type=int, default=1,
@@ -102,7 +105,7 @@ class Args(NamedTuple):
                                  "For more details see parameter distance of scipy.signal._peak_finding.find_peaks.")
 
         parser.add_argument("-r2", "--secondaryResolution", dest="secondaryResolution", type=int, default=50,
-                            help="Scaling factor used to reduce the size of the vectorized form of the optical map "
+                            help="Size of sequence intervals represented by a single item in the vectorized form of the optical map "
                                  "in the second cross-correlation run.")
 
         parser.add_argument("-b2", "--secondaryBlur", dest="secondaryBlur", type=int, default=4,
