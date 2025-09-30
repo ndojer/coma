@@ -105,7 +105,7 @@ class _MultiPassWorkflowCoordinator(_WorkflowCoordinator):
                 new_rows = [r.setAlignedRest(True) for r in new_rows]
                 pass_rows.append(new_rows)
 
-        all_rows_flat = [row for rows in pass_rows for row in rows]
+        # all_rows_flat = [row for rows in pass_rows for row in rows]
 
         filtered_per_pass = [
             AlignmentResults.filterOutSubsequentAlignmentsForSingleQuery(rows)
