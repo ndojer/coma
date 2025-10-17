@@ -341,7 +341,7 @@ class ChainBuilder:
                                       reverseStrand = isReverse)
         lastAP = currAP
         revChain = []
-        revIndels = []
+        # revIndels = []
         rests = []
         revSegment = []
         if not lastAP.isEnd():
@@ -362,7 +362,7 @@ class ChainBuilder:
             else:
                 assert revSegment
                 revChain.append((segmentShift, reversed(revSegment)))
-                revIndels.append((currAP, revSegment[-1]))
+                # revIndels.append((currAP, revSegment[-1]))
                 assert not currAP.isStart()
                 revSegment = [currAP]
                 segmentShift = currAP.queryShift
@@ -376,14 +376,31 @@ class ChainBuilder:
             rests.append(query.getSubMap(isReverse, end = alignmentStart))
             # rests.append(list(filter(lambda pos: pos.position<firstAP.queryPosition, query.getPositionsWithSiteIds(isReverse))))
         
+        def smapData(ap):
+            refPos = ap.reference.position
+            queryPos = query.getAbsolutePosition(ap.query.position, isReverse)
+            refIdx = ap.reference.siteId
+            queryIdx = ap.query.siteId
+            return refPos, queryPos, refIdx, queryIdx
+            
+        
         shiftToPeak = {peak.position: peak for peak in peaks}
         finalSegments = []
+        indels = []
+        prevAP = None
         for shift, segment in reversed(revChain):
             positions = [ScoredAlignedPair(ap.alignmentPosition, ap.score) if ap.isAlPair() else
                          ScoredNotAlignedPosition(ap.alignmentPosition, ap.score) for ap in segment]
+            APs = [ap for ap in positions if isinstance(ap, AlignedPair)]
+            if APs:
+                if prevAP is not None:
+                    indels.append((smapData(prevAP), smapData(APs[0]), shift-prevShift))
+                prevAP = APs[-1]
+                prevShift = shift
             peak = shiftToPeak[segmentShift]
             allPeakPositions = []
             finalSegments.append(AlignmentSegment.create(positions, peak, allPeakPositions))
+
 
         # return AlignmentResultRow.create(AlignmentSegmentsWithResolvedConflicts(finalSegments),
         #                                  query.moleculeId,
@@ -409,6 +426,6 @@ class ChainBuilder:
                                   referenceEndPosition, 
                                   isReverse,
                                   maxScore, 
-                                  indels = reversed(revIndels), 
+                                  indels = indels, 
                                   rests = rests)
 
