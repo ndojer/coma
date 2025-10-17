@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Dict, Any, ClassVar, List
+from typing import Optional, Dict, Any, ClassVar, List, Tuple
 from collections import defaultdict
 import math
 import re
@@ -427,17 +427,17 @@ class AlignmentResults:
         :type file_name: str, optional
         """
         lines_sorted = sorted([indel for row in self.rows for indel in row.indelList()],
-                        key = lambda indel: (indel[1], indel[3]))
+                        key = lambda indel: (indel[2], indel[4]))
     
         with open(file_name, "w") as f:
-            f.write("#Type \t Chromosome \t RefStart \t RefStop \t QueryId \t QueryStart \t QueryStop \t Length \n")
+            f.write("#Type \t Length \t RefId \t RefStartPos \t RefEndPos \t RefStartIdx \t RefEndIdx \t QueryId \t QueryStartPos \t QueryEndPos \t QueryStartIdx \t QueryEndIdx \n")
             for line in lines_sorted:
                 line = [str(i) for i in line]
                 line = "\t".join(line)
                 f.write(line + "\n")
 
     def write_rest_file(self, file_name:str="rests.txt"):
-        """Function used to write indels files
+        """Function used to write rests files
     
         :param file_name: Name of output file, defaults to "rests.txt"
         :type file_name: str, optional
@@ -724,16 +724,41 @@ class AlignmentResultRow(BenchmarkAlignment):
 
     def indelList(self):
         indels = []
-        for leftAP, rightAP in self.indels:
-            refStart = leftAP.referencePosition()
-            refEnd = rightAP.referencePosition()
-            queryStart = leftAP.queryPosition
-            queryEnd = rightAP.queryPosition
-            diff = abs(refEnd-refStart) - abs(queryEnd-queryStart)
+        for leftAP, rightAP, diff in self.indels:
+            refStartPos, queryStartPos, refStartIdx, queryStartIdx = leftAP
+            refEndPos, queryEndPos, refEndIdx, queryEndIdx = rightAP
+            # diff = abs(refEndPos-refStartPos) - abs(queryEndPos-queryStartPos)
             indelType = 'insertion' if diff<0 else 'deletion'
-            indels.append([indelType, 
-                       self.referenceId, refStart, refEnd, self.queryId,  queryStart, queryEnd, diff])
+            indels.append([indelType, diff, 
+                        self.referenceId, refStartPos, refEndPos, refStartIdx, refEndIdx, 
+                        self.queryId,  queryStartPos, queryEndPos,  queryStartIdx, queryEndIdx])
         return indels
+
+
+    # def indelList(self):
+    #     if len(self.segments) <= 1:
+    #         return []
+    #     indels = []
+    #     currAPs = [ap for ap in self.segments[0].positions if isinstance(ap, AlignedPair)]
+    #     leftAP = currAPs[-1]
+    #     for currSegment in self.segments[1:]:
+    #         currAPs = [ap for ap in currSegment.positions if isinstance(ap, AlignedPair)]
+    #         rightAP = currAPs[0]
+    #         refStartPos = leftAP.reference.position
+    #         refEndPos = rightAP.reference.position
+    #         queryStartPos = leftAP.query.position
+    #         queryEndPos = rightAP.query.position
+    #         refStartIdx = leftAP.reference.siteId
+    #         refEndIdx = rightAP.reference.siteId
+    #         queryStartIdx = leftAP.query.siteId
+    #         queryEndIdx = rightAP.query.siteId
+    #         diff = abs(refEndPos-refStartPos) - abs(queryEndPos-queryStartPos)
+    #         indelType = 'insertion' if diff<0 else 'deletion'
+    #         indels.append([indelType, diff, 
+    #                    self.referenceId, refStartPos, refEndPos, refStartIdx, refEndIdx, 
+    #                    self.queryId,  queryStartPos, queryEndPos,  queryStartIdx, queryEndIdx])
+    #         leftAP = currAPs[-1]
+    #     return indels
 
 
 

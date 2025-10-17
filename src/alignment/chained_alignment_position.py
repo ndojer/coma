@@ -24,10 +24,20 @@ class ChainedAlignmentPosition:
         self.queryShift = referenceStart
         if isinstance(alignmentPosition, MockPosition):
             self.queryPosition = alignmentPosition.queryPosition
+            self.referenceIdx = -1
+            self.queryIdx = -1
         elif isinstance(alignmentPosition, NotAlignedReferencePosition):
             self.queryPosition = alignmentPosition.reference.position - self.queryShift
+            self.referenceIdx = alignmentPosition.reference.siteId
+            self.queryIdx = -1
+        elif isinstance(alignmentPosition, NotAlignedQueryPosition):
+            self.queryPosition = alignmentPosition.query.position
+            self.referenceIdx = -1
+            self.queryIdx = alignmentPosition.query.siteId
         else:
             self.queryPosition = alignmentPosition.query.position
+            self.referenceIdx = alignmentPosition.reference.siteId
+            self.queryIdx = alignmentPosition.query.siteId
 
     def __lt__(self, other: ChainedAlignmentPosition):
         return self.queryPosition < other.queryPosition
@@ -37,6 +47,9 @@ class ChainedAlignmentPosition:
     
     def referencePosition(self):
         return self.queryShift + self.queryPosition
+    
+    def queryPosition(self):
+        return self.queryPosition
 
     def isNARefer(self):
         return isinstance(self.alignmentPosition, NotAlignedReferencePosition)
