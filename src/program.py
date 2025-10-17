@@ -15,6 +15,7 @@ from src.parsers.simulation_alignment_pair_parser import SimulationAlignmentPair
 from src.parsers.simulation_data_as_xmap_reader import SimulationDataAsXmapReader
 from src.parsers.xmap_alignment_pair_parser import XmapAlignmentPairWithDistanceParser
 from src.parsers.xmap_reader import XmapReader
+from src.parsers.smap_reader import SmapReader
 from src.workflow_coordinator_factory import WorkflowCoordinatorFactory
 
 
@@ -26,8 +27,9 @@ def main():
 class Program:
     def __init__(self, args: Args, extensions: List[Extension] = None):
         self.args = args
-        self.__readMaps()
+        self.readMaps()
         self.xmapReader = XmapReader(XmapAlignmentPairWithDistanceParser(self.referenceMaps, self.queryMaps))
+        self.smapReader = SmapReader()
         self.dispatcher = Dispatcher(extensions)
         self.workflowCoordinator = WorkflowCoordinatorFactory(args, self.dispatcher, self.xmapReader).create()
         if args.diagnosticsEnabled:
@@ -43,8 +45,25 @@ class Program:
 
     def run(self):
         alignmentResultRows = self.workflowCoordinator.execute(self.referenceMaps, self.queryMaps)
-        alignmentResult = AlignmentResults.create(self.args.referenceFile.name, self.args.queryFile.name,
-                                                  alignmentResultRows)
+        if self.args.outputMode == "split-alignments":
+            alignmentResultRows = sorted(
+                alignmentResultRows,
+                key=lambda r: (
+                    r.queryId,
+                    r.referenceId,
+                    r.referenceStartPosition,
+                    (r.queryEndPosition if r.orientation == "-" else r.queryStartPosition),
+                ),
+            )
+            alignmentResult = AlignmentResults(
+                self.args.referenceFile.name, self.args.queryFile.name, alignmentResultRows
+            )
+        else:
+            alignmentResult = AlignmentResults.create(
+                self.args.referenceFile.name,
+                self.args.queryFile.name,
+                alignmentResultRows
+            )
         self.xmapReader.writeAlignments(self.args.outputFile, alignmentResult, self.args)
         if self.args.outputFile is not sys.stdout:
             self.args.outputFile.close()
@@ -52,9 +71,12 @@ class Program:
             alignmentResult.write_indel_file(self.args.outputIndels)
         if self.args.outputRests:
             alignmentResult.write_rest_file(self.args.outputRests)
+        if self.args.outputSmap:
+            smap_rows = alignmentResult.to_smap_rows()
+            self.smapReader.writeSmapsFromRows(self.args.outputSmap, smap_rows, self.args)
         return alignmentResult
 
-    def __readMaps(self):
+    def readMaps(self):
         cmapReader = CmapReader()
         with self.args.referenceFile:
             self.referenceMaps = cmapReader.readReferences(self.args.referenceFile, self.args.referenceIds)

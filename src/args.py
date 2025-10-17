@@ -11,6 +11,7 @@ class Args(NamedTuple):
     outputFile: TextIO
     outputIndels: str
     outputRests: str
+    outputSmap: str
     primaryResolution: int
     primaryBlur: int
     secondaryResolution: int
@@ -32,14 +33,13 @@ class Args(NamedTuple):
     benchmarkAlignmentFile: TextIO
     peaksCount: int
     disableProgressBar: bool
-    outputMode: Literal["best", "separate", "joined", "all", "single"]
+    outputMode: Literal["best", "separate", "joined", "all", "single", "split-alignments"]
     segmentCombinePenalty: int
     segmentJoinMultiplier: float
     sequentialityScore: int
     endReachingScore: int
     minSubsequentScore: int
     scalingRange: float
-    passes: int    
 
     @staticmethod
     def parse(args: List[str] = None) -> Args:
@@ -67,16 +67,20 @@ class Args(NamedTuple):
         parser.add_argument("-rt", "--outputRests", dest="outputRests", nargs="?", type=str, default=None,
                             help="Alignment rest output file path.")
 
+        parser.add_argument("-sm", "--smap", dest="outputSmap", nargs="?", type=str, default=None,
+                            help="SMAP output file path.")
+
         parser.add_argument("-oM", "--outputMode", dest="outputMode", type=str,
-                            default="single", choices=["best", "separate", "joined", "all", "single"],
+                            default="single", choices=["best", "separate", "joined", "all", "single", "split-alignments"],
                             help="Mode which should be used while running aligner and creating output alignment file(s). "
                                 "There are several possible options: "
-                                "    'single' - single-pass running mode (default), "
-                                "    'separate' - creates two separate files for alignments from first and second pass, "
-                                "    'joined'- joins alignments when it is possible and saves rest to separate file, "
+                                "    'single' - single-pass running mode (default); "
+                                "    'separate' - creates two separate files for alignments from first and second pass; "
+                                "    'joined'- joins alignments when it is possible and saves rest to separate file; "
                                 "    'best' - includes joined alignments when possible and best alignment based on "
-                                "        confidence when joined option is not available, "
-                                "    'all'-creates 3 files, one with joint alignments, and two with all obtained alignments.")
+                                "        confidence when joined option is not available; "
+                                "    'all'- creates 3 files, one with joint alignments, and two with all obtained alignments; "
+                                "    'split-alignments' - creates single file for all multi-pass alignments.")
 
         parser.add_argument("-sr", "--scalingRange", dest="scalingRange", type=float, default=0,
                             help="The extent to which a molecule can be stretched or compressed relative to its length "
@@ -180,9 +184,6 @@ class Args(NamedTuple):
 
         parser.add_argument("-ss", "--sequentialityScore", dest="sequentialityScore", type=int, default=2,
                             help="Segment sequentiality scoring function version.")
-
-        parser.add_argument("-ps", "--passes", dest="passes", type=int, default=2,
-                            help="Maximum number of alignment passes.")
         
         args = parser.parse_args(args)
         return args  # type: ignore

@@ -36,7 +36,8 @@ class _MultiPassWorkflowCoordinator(_WorkflowCoordinator):
         inactive_queries |= all_queries - {r.queryId for r in first_pass}
 
         if isinstance(self.aligner, ChainBuilder):
-            for pass_no in range(2, self.args.passes + 1):
+            pass_no = 2
+            while True:
                 latest_rows = pass_rows[-1] if pass_rows else []
                 next_fragments: List[OpticalMap] = []
 
@@ -52,24 +53,12 @@ class _MultiPassWorkflowCoordinator(_WorkflowCoordinator):
                         if pos and len(pos) >= 2:
                             total_rest_bp += (max(pos) - min(pos))
 
-                    total_len = query_len_by_id.get(r.queryId)
-                    if not total_len and rests:
-                        total_len = getattr(rests[0], 'length', None)
-
-                    if total_len: #Kontrolny
-                        coverage_pct = 100.0 - (total_rest_bp / float(total_len)) * 100.0
-                        print(f"[ChainBuilder] qid={r.queryId} coverage={coverage_pct:.2f}% "
-                            f"(rests={total_rest_bp:.2f} / length={float(total_len):.2f})")
-                    else:
-                        print(f"[ChainBuilder] qid={r.queryId} coverage=?")
-
                     for frag in rests:
                         pos = getattr(frag, 'positions', None)
                         if pos is not None and len(pos) >= 7:
                             next_fragments.append(frag)
 
                 if not next_fragments:
-                    print("No fragments for alignment")  # Kontrolny
                     break
 
                 new_rows = super().execute(referenceMaps, next_fragments, isFirstPass=False)
@@ -79,17 +68,17 @@ class _MultiPassWorkflowCoordinator(_WorkflowCoordinator):
                 inactive_queries |= attempted - successful
 
                 if not new_rows:
-                    print("Nothing aligned")  # Kontrolny
                     break
 
                 new_rows = [r.setAlignedRest(True) for r in new_rows]
                 pass_rows.append(new_rows)
+                pass_no += 1
 
         else:
-            for pass_no in range(2, self.args.passes + 1):
+            pass_no = 2
+            while True:
                 next_fragments = self._get_next_pass_fragments(pass_rows, queryMaps, inactive_queries)
                 if not next_fragments:
-                    print("No fragments for alignment")  # Kontrolny
                     break
 
                 new_rows = super().execute(referenceMaps, next_fragments)
@@ -99,21 +88,20 @@ class _MultiPassWorkflowCoordinator(_WorkflowCoordinator):
                 inactive_queries |= attempted - successful
 
                 if not new_rows:
-                    print("Nothing aligned")  # Kontrolny
                     break
 
                 new_rows = [r.setAlignedRest(True) for r in new_rows]
                 pass_rows.append(new_rows)
+                pass_no += 1
 
-        # all_rows_flat = [row for rows in pass_rows for row in rows]
+        if self.args.outputMode == 'split-alignments':
+            all_rows_flat = [row for rows in pass_rows for row in rows]
+            return all_rows_flat
 
         filtered_per_pass = [
             AlignmentResults.filterOutSubsequentAlignmentsForSingleQuery(rows)
             for rows in pass_rows
         ]
-
-        if self.args.outputMode == 'single':
-            return filtered_per_pass[0]
 
         if self.args.outputMode == 'separate':
             for i, rows in enumerate(filtered_per_pass[1:], start=1):
@@ -136,7 +124,6 @@ class _MultiPassWorkflowCoordinator(_WorkflowCoordinator):
             for i, rows in enumerate(filtered_per_pass, start=1):
                 self.saveAdditionalOutput(rows, i)
             return joinedRows
-
 
     def _get_next_pass_fragments(
             self,
@@ -188,7 +175,6 @@ class _MultiPassWorkflowCoordinator(_WorkflowCoordinator):
             else:
                 merged[-1][1] = max(merged[-1][1], e)
         coverage = sum(e - s for s, e in merged)
-        print(coverage/(query.length)) #Kontrolny
         return coverage > 0.8 * query.length
     
     def _intersection_of_unaligned(
