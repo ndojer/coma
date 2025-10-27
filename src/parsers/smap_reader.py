@@ -33,13 +33,39 @@ class SmapReader:
 
         for i, d in enumerate(rows, start=1):
             d["SmapEntryID"] = i
-            if d.get("LinkID") is None:
-                d["LinkID"] = -1
+
+        for d in rows:
+            d["LinkID"] = -1
 
         for i, r in enumerate(smap_rows):
             peer_idx = getattr(r, "_link_peer_idx", None)
             if isinstance(peer_idx, int) and 0 <= peer_idx < len(rows):
                 rows[i]["LinkID"] = rows[peer_idx]["SmapEntryID"]
+                rows[peer_idx]["LinkID"] = rows[i]["SmapEntryID"]
+
+        i = 0
+        while i < len(rows) - 1:
+            a, b = rows[i], rows[i+1]
+            if (a.get("Type") == "inversion_paired" and
+                b.get("Type") == "inversion_paired" and
+                a.get("QryContigID") == b.get("QryContigID")):
+                a["LinkID"] = b["SmapEntryID"]
+                b["LinkID"] = a["SmapEntryID"]
+                i += 2
+                continue
+            i += 1
+
+        i = 0
+        while i < len(rows) - 1:
+            a, b = rows[i], rows[i+1]
+            if (a.get("Type") == "inversion" and
+                b.get("Type") == "inversion_partial" and
+                a.get("QryContigID") == b.get("QryContigID")):
+                a["LinkID"] = b["SmapEntryID"]
+                b["LinkID"] = a["SmapEntryID"]
+                i += 2
+                continue
+            i += 1
 
         with open(outputFile.name if hasattr(outputFile, "name") else outputFile, "w", encoding="utf-8") as f:
             f.write("# SMAP File Version:\t0.9\n")
