@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from typing import List
 
-from src.alignment.alignment_results import AlignmentResults
+from src.alignment.alignment_results import AlignmentResults, SmapResultRow
 from src.args import Args
 from src.diagnostic.diagnostics import DiagnosticsWriter, PrimaryCorrelationPlotter, \
     SecondaryCorrelationPlotter, AlignmentPlotter, MultipleAlignmentsPlotter
@@ -45,6 +45,7 @@ class Program:
 
     def run(self):
         alignmentResultRows = self.workflowCoordinator.execute(self.referenceMaps, self.queryMaps)
+
         if self.args.outputMode == "split-alignments":
             alignmentResultRows = sorted(
                 alignmentResultRows,
@@ -58,12 +59,19 @@ class Program:
             alignmentResult = AlignmentResults(
                 self.args.referenceFile.name, self.args.queryFile.name, alignmentResultRows
             )
+
+        elif self.args.outputMode == "separate":
+            alignmentResult = AlignmentResults(
+                self.args.referenceFile.name, self.args.queryFile.name, alignmentResultRows
+            )
+
         else:
             alignmentResult = AlignmentResults.create(
                 self.args.referenceFile.name,
                 self.args.queryFile.name,
                 alignmentResultRows
             )
+
         self.xmapReader.writeAlignments(self.args.outputFile, alignmentResult, self.args)
         if self.args.outputFile is not sys.stdout:
             self.args.outputFile.close()
@@ -72,6 +80,7 @@ class Program:
         if self.args.outputRests:
             alignmentResult.write_rest_file(self.args.outputRests)
         if self.args.outputSmap:
+            SmapResultRow.set_inv1bp_max_ref_gap_bp(self.args.inv_max_gap)
             smap_rows = alignmentResult.to_smap_rows()
             self.smapReader.writeSmapsFromRows(self.args.outputSmap, smap_rows, self.args)
         return alignmentResult
@@ -82,9 +91,6 @@ class Program:
             self.referenceMaps = cmapReader.readReferences(self.args.referenceFile, self.args.referenceIds)
         with self.args.queryFile:
             self.queryMaps = cmapReader.readQueries(self.args.queryFile, self.args.queryIds)
-            # self.queryMaps = list(
-            #     map(lambda q: q.trim(), cmapReader.readQueries(self.args.queryFile, self.args.queryIds)))
-
 
 if __name__ == '__main__':
     main()

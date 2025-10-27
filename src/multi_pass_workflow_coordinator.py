@@ -95,35 +95,14 @@ class _MultiPassWorkflowCoordinator(_WorkflowCoordinator):
                 pass_no += 1
 
         if self.args.outputMode == 'split-alignments':
-            all_rows_flat = [row for rows in pass_rows for row in rows]
-            return all_rows_flat
-
-        filtered_per_pass = [
-            AlignmentResults.filterOutSubsequentAlignmentsForSingleQuery(rows)
-            for rows in pass_rows
-        ]
+            return [row for rows in pass_rows for row in rows]
 
         if self.args.outputMode == 'separate':
-            for i, rows in enumerate(filtered_per_pass[1:], start=1):
+            for i, rows in enumerate(pass_rows[1:], start=1):
                 self.saveAdditionalOutput(rows, i)
-            return filtered_per_pass[0]
+            return pass_rows[0]
 
-        flattened_filtered = [row for rows in filtered_per_pass for row in rows]
-        joinedRows, separateRows = AlignmentResults.resolve(flattened_filtered, self.args.maxDifference)
-
-        if self.args.outputMode == "best":
-            joined_ids = {row.queryId for row in joinedRows}
-            bestRows = [row for row in filtered_per_pass[0] if row.queryId not in joined_ids]
-            return sorted(joinedRows + bestRows, key=lambda r: r.queryId)
-
-        if self.args.outputMode == 'joined':
-            self.saveAdditionalOutput(separateRows, 1)
-            return joinedRows
-
-        if self.args.outputMode == 'all':
-            for i, rows in enumerate(filtered_per_pass, start=1):
-                self.saveAdditionalOutput(rows, i)
-            return joinedRows
+        return filtered_per_pass[0]
 
     def _get_next_pass_fragments(
             self,
