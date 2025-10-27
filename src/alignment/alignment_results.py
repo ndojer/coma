@@ -55,6 +55,166 @@ class SmapResultRow:
         return dict(self.data)
 
     @classmethod
+    def build_inversion_breakpoint(cls, qid: int, A: Any, B: Any, mol_orientation: str) -> "SmapResultRow":
+        r = cls()
+        r.data["QryContigID"]  = int(qid)
+        r.data["RefcontigID1"] = cls.rid(A)
+        r.data["RefcontigID2"] = cls.rid(B)
+        r.data["Type"] = "inversion"
+        r.data["Confidence"] = 0.99
+
+        a_qlo, a_qhi = cls.qry_iv(A); b_qlo, b_qhi = cls.qry_iv(B)
+        r.data["QryStartPos"] = float(a_qhi)
+        r.data["QryEndPos"]   = float(b_qlo)
+
+        same = A if cls.ori_char(A) == mol_orientation else B
+        opp  = B if same is A else A
+
+        same_at_junction = cls.ref_at_qhi(A) if same is A else cls.ref_at_qlo(B)
+        opposite_far     = cls.ref_at_qlo(A) if opp is A else cls.ref_at_qhi(B)
+
+        r.data["RefStartPos"] = float(same_at_junction)
+        r.data["RefEndPos"]   = float(opposite_far)
+        r.data["SVsize"] = abs(float((cls.ref_at_qhi(A) if (opp is A) else cls.ref_at_qlo(B))) - float(same_at_junction))
+
+        if (mol_orientation == '+' and cls.ori_char(B) == mol_orientation) or \
+           (mol_orientation == '-' and cls.ori_char(A) == mol_orientation):
+            r.data["RefStartPos"], r.data["RefEndPos"] = r.data["RefEndPos"], r.data["RefStartPos"]
+
+        r.data["XmapID1"] = cls.get_xmap_id(A)
+        r.data["XmapID2"] = cls.get_xmap_id(B)
+
+        qsi, qei, rsi, rei = cls.edge_label_indices(A, B)
+        r.data["QryStartIdx"] = qsi
+        r.data["QryEndIdx"]   = qei
+        r.data["RefStartIdx"] = rsi
+        r.data["RefEndIdx"]   = rei
+
+        return r
+
+    @classmethod
+    def ref_at_qlo(cls, r: Any) -> float:
+        rlo, rhi = cls.ref_iv(r)
+        return rlo if cls.ori_char(r) == '+' else rhi
+
+    @classmethod
+    def ref_at_qhi(cls, r: Any) -> float:
+        rlo, rhi = cls.ref_iv(r)
+        return rhi if cls.ori_char(r) == '+' else rlo
+
+    INV1BP_MAX_REF_GAP_BP: int = 2_000_000
+
+    @classmethod
+    def set_inv1bp_max_ref_gap_bp(cls, v: int) -> None:
+        cls.INV1BP_MAX_REF_GAP_BP = int(v)
+
+    @classmethod
+    def inversion_1bp_ref_gap(cls, A: Any, B: Any, mol_orientation: str) -> float:
+        same = A if cls.ori_char(A) == mol_orientation else B
+        opp  = B if same is A else A
+
+        same_at_junction = cls.ref_at_qhi(A) if same is A else cls.ref_at_qlo(B)
+        opp_other_end = cls.ref_at_qhi(A) if opp is A else cls.ref_at_qlo(B)
+
+        return abs(float(opp_other_end) - float(same_at_junction))
+
+
+    @classmethod
+    def build_inversion_partial_stub(cls, qid: int, A: Any, B: Any, mol_orientation: str) -> "SmapResultRow":
+        r = cls()
+        r.data["QryContigID"]  = int(qid)
+
+        inv = A if cls.ori_char(A) != mol_orientation else B
+        r.data["RefcontigID1"] = cls.rid(inv)
+        r.data["RefcontigID2"] = -1
+
+        r.data["Type"] = "inversion_partial"
+        r.data["Confidence"] = 0.99
+
+        a_qlo, a_qhi = cls.qry_iv(A)
+        b_qlo, b_qhi = cls.qry_iv(B)
+
+        if inv is A:
+            qry_far = float(a_qlo)
+            ref_opp = float(cls.ref_at_qhi(A))
+            r.data["XmapID1"] = cls.get_xmap_id(A)
+        else:
+            qry_far = float(b_qhi)
+            ref_opp = float(cls.ref_at_qlo(B))
+            r.data["XmapID1"] = cls.get_xmap_id(B)
+
+        r.data["XmapID2"] = -1
+
+        r.data["QryStartPos"] = qry_far
+        r.data["QryEndPos"]   = -1.0
+        r.data["RefStartPos"] = ref_opp
+        r.data["RefEndPos"]   = -1.0
+
+        a_pairs = cls.parse_alignment_pairs(A)
+        b_pairs = cls.parse_alignment_pairs(B)
+        if a_pairs and b_pairs:
+            a_ref_start_idx, a_qry_start_idx = a_pairs[0]
+            a_ref_end_idx,   a_qry_end_idx   = a_pairs[-1]
+            b_ref_start_idx, b_qry_start_idx = b_pairs[0]
+            b_ref_end_idx,   b_qry_end_idx   = b_pairs[-1]
+
+            if inv is A:
+                r.data["QryStartIdx"] = int(a_qry_start_idx)
+                r.data["RefStartIdx"] = int(a_ref_end_idx)
+            else:
+                r.data["QryStartIdx"] = int(b_qry_end_idx)
+                r.data["RefStartIdx"] = int(b_ref_start_idx)
+
+            r.data["QryEndIdx"] = -1
+            r.data["RefEndIdx"] = -1
+        else:
+            r.data["QryEndIdx"] = -1
+            r.data["RefEndIdx"] = -1
+
+        same = A if cls.ori_char(A) == mol_orientation else B
+        opp  = B if same is A else A
+        same_at_junction = cls.ref_at_qhi(A) if same is A else cls.ref_at_qlo(B)
+        opp_other_end    = cls.ref_at_qhi(A) if opp  is A else cls.ref_at_qlo(B)
+        r.data["SVsize"] = abs(float(opp_other_end) - float(same_at_junction))
+
+        return r
+
+    @classmethod
+    def build_indel_row(cls, ar: "AlignmentResultRow", indel: list) -> "SmapResultRow":
+        (indelType, diff, refId, r_start, r_end, r_start_idx, r_end_idx,
+        qid, q_start, q_end, q_start_idx, q_end_idx) = indel
+
+        r = cls()
+        r.data["QryContigID"]  = int(qid)
+        r.data["RefcontigID1"] = int(refId)
+        r.data["RefcontigID2"] = int(refId)
+
+        q_lo, q_hi = (float(q_start), float(q_end))
+        r_lo, r_hi = (float(r_start), float(r_end))
+        if q_lo > q_hi: q_lo, q_hi = q_hi, q_lo
+        if r_lo > r_hi: r_lo, r_hi = r_hi, r_lo
+        r.data["QryStartPos"] = q_lo
+        r.data["QryEndPos"]   = q_hi
+        r.data["RefStartPos"] = r_lo
+        r.data["RefEndPos"]   = r_hi
+
+        r.data["Type"] = str(indelType)
+        r.data["SVsize"] = float(abs(diff))
+        r.data["Confidence"] = 0.99
+
+        xid = cls.get_xmap_id(ar) or -1
+        r.data["XmapID1"] = int(xid)
+        r.data["XmapID2"] = int(xid)
+
+        r.data["QryStartIdx"] = int(q_start_idx)
+        r.data["QryEndIdx"]   = int(q_end_idx)
+        r.data["RefStartIdx"] = int(r_start_idx)
+        r.data["RefEndIdx"]   = int(r_end_idx)
+
+        r.data["LinkID"] = -1
+        return r
+
+    @classmethod
     def from_alignment_group(cls, qid: int, group_rows: List[Any]) -> List["SmapResultRow"]:
         n = len(group_rows)
         if n < 2:
@@ -73,22 +233,68 @@ class SmapResultRow:
                 out.append(row)
                 used.update({i, i+1, i+2, i+3})
 
-        inv_rows_idx: List[int] = []
+        inv_pairs: List[tuple[Any, Any]] = []
         for i in range(n - 1):
             if {i, i+1} & used:
                 continue
             A, B = group_rows[i], group_rows[i+1]
             if cls.is_inversion_pair(A, B):
-                svt = "Inversion" if len(inv_rows_idx) == 0 else "Inversion_paired"
-                row = cls.build_entry_pair(qid, A, B, sv_type=svt, orientation_str=None)
-                row.data["LinkID"] = -1
-                out.append(row)
-                inv_rows_idx.append(len(out) - 1)
+                inv_pairs.append((A, B))
 
-        if len(inv_rows_idx) >= 2:
-            i1, i2 = inv_rows_idx[0], inv_rows_idx[1]
-            setattr(out[i1], "_link_peer_idx", i2)
-            setattr(out[i2], "_link_peer_idx", i1)
+        if len(inv_pairs) == 1:
+            A, B = inv_pairs[0]
+
+            try:
+                left  = group_rows[0]
+                right = group_rows[-1]
+                key_left  = (int(getattr(left,  "referenceId")), float(getattr(left,  "referenceStartPosition")))
+                key_right = (int(getattr(right, "referenceId")), float(getattr(right, "referenceStartPosition")))
+                mol_orientation = '+' if key_left < key_right else '-'
+            except Exception:
+                mol_orientation = '?'
+
+            ref_gap = cls.inversion_1bp_ref_gap(A, B, mol_orientation)
+            if ref_gap <= float(cls.INV1BP_MAX_REF_GAP_BP):
+                row = cls.build_inversion_breakpoint(qid, A, B, mol_orientation)
+                out.append(row)
+
+                invp_row = cls.build_inversion_partial_stub(qid, A, B, mol_orientation)
+                out.append(invp_row)
+
+                return out
+
+
+        inv_rows: List[SmapResultRow] = []
+        for k in range(0, len(inv_pairs) - 1, 2):
+            (A1, B1) = inv_pairs[k]
+            (A2, B2) = inv_pairs[k+1]
+
+            r1 = cls.build_entry_pair(qid, A1, B1, sv_type="inversion_paired", orientation_str=None)
+            r2 = cls.build_entry_pair(qid, A2, B2, sv_type="inversion_paired", orientation_str=None)
+
+            setattr(r1, "_link_peer_idx", None)
+            setattr(r2, "_link_peer_idx", None)
+
+            inv_rows.append(r1)
+            inv_rows.append(r2)
+
+            try:
+                q1 = float(r1.data.get("QryEndPos", r1.data.get("QryStartPos")))
+                q2 = float(r2.data.get("QryEndPos", r2.data.get("QryStartPos")))
+                svlen = abs(q2 - q1)
+            except Exception:
+                svlen = -1.0
+            r1.data["SVsize"] = svlen
+            r2.data["SVsize"] = svlen
+
+        base_idx = len(out)
+        out.extend(inv_rows)
+        for j in range(0, len(inv_rows), 2):
+            i1 = base_idx + j
+            i2 = base_idx + j + 1
+            if i2 < base_idx + len(inv_rows):
+                setattr(out[i1], "_link_peer_idx", i2 - base_idx)
+                setattr(out[i2], "_link_peer_idx", i1 - base_idx)
 
         for i in range(n - 1):
             if {i, i+1} & used:
@@ -112,7 +318,6 @@ class SmapResultRow:
             out.append(row)
 
         return out
-
 
     @staticmethod
     def ori_char(row: Any) -> str:
@@ -314,9 +519,12 @@ class SmapResultRow:
         return True
 
     @classmethod
-    def is_inversion_pair(cls, A: Any, B: Any) -> bool:
-        return cls.same_ref(A,B) and (cls.ori_char(A) != cls.ori_char(B)) \
-               and (cls.ends_proximity(A,B) <= float(cls.SV_PROXIMITY_THR)) and cls.adjacent_on_qry(A,B)
+    def is_inversion_pair(cls, A, B) -> bool:
+        return (
+            cls.same_ref(A, B) and
+            (cls.ori_char(A) != cls.ori_char(B)) and
+            cls.adjacent_on_qry(A, B)
+        )
 
     @classmethod
     def translocation_type(cls, A: Any, B: Any) -> Optional[str]:
@@ -341,6 +549,7 @@ class SmapResultRow:
         r.data["RefcontigID2"] = cls.rid(B)
 
         q_start, q_end, r_start, r_end = cls.span_both_axes(A, B)
+
         r.data["QryStartPos"] = q_start
         r.data["QryEndPos"]   = q_end
         r.data["RefStartPos"] = r_start
@@ -353,17 +562,9 @@ class SmapResultRow:
 
         r.data["XmapID1"] = cls.get_xmap_id(A)
         r.data["XmapID2"] = cls.get_xmap_id(B)
-
-        if sv_type in ("duplication", "duplication_split", "duplication_inverted"):
-            r.data["Confidence"] = -1.0
-        else:
-            r.data["Confidence"] = 99.0
-
+        r.data["Confidence"] = 0.99 if sv_type not in ("duplication","duplication_split") else -1.0
         r.data["Type"] = sv_type
-        if str(sv_type).startswith("translocation"):
-            r.data["Orientation"] = orientation_str
-        else:
-            r.data["Orientation"] = None
+        r.data["Orientation"] = orientation_str if str(sv_type).startswith("translocation") else None
 
         qsi, qei, rsi, rei = cls.edge_label_indices(A, B)
         r.data["QryStartIdx"] = qsi
@@ -371,8 +572,19 @@ class SmapResultRow:
         r.data["RefStartIdx"] = rsi
         r.data["RefEndIdx"]   = rei
 
-        return r
+        if sv_type in ("inversion_paired",):
+            a_qlo, a_qhi = cls.qry_iv(A)
+            b_qlo, b_qhi = cls.qry_iv(B)
+            a_rlo, a_rhi = cls.ref_iv(A)
+            b_rlo, b_rhi = cls.ref_iv(B)
+            q_mid = (a_qhi + b_qlo) / 2.0
+            r_mid = (a_rhi + b_rlo) / 2.0
+            r.data["QryStartPos"] = q_mid
+            r.data["QryEndPos"]   = q_mid
+            r.data["RefStartPos"] = r_mid
+            r.data["RefEndPos"]   = r_mid
 
+        return r
 
 
 @dataclass
@@ -421,11 +633,6 @@ class AlignmentResults:
         return joined, separate
 
     def write_indel_file(self, file_name:str="indels.txt"):
-        """Function used to write indels files
-    
-        :param file_name: Name of output file, defaults to "indels.txt"
-        :type file_name: str, optional
-        """
         lines_sorted = sorted([indel for row in self.rows for indel in row.indelList()],
                         key = lambda indel: (indel[2], indel[4]))
     
@@ -437,11 +644,6 @@ class AlignmentResults:
                 f.write(line + "\n")
 
     def write_rest_file(self, file_name:str="rests.txt"):
-        """Function used to write rests files
-    
-        :param file_name: Name of output file, defaults to "rests.txt"
-        :type file_name: str, optional
-        """
         items_sorted = sorted([(row.queryId, row.rests) for row in self.rows])
     
         with open(file_name, "w") as f:
@@ -450,44 +652,12 @@ class AlignmentResults:
                 rest_maps = 'None' if rests is None else '\t'.join(map(str, rests))
                 f.write("{}\t{}\n".format(item[0], rest_maps))
 
-
-
-
-
-
-
-    def debugPrintAlignmentGroup(self, qid: int, group_rows: list) -> None:
-        print(f"[SMAP GROUP] qid={qid}  n_alignments={len(group_rows)}")
-        for i, r in enumerate(group_rows, 1):
-            ori = '-' if getattr(r, 'reverseStrand', False) else '+'
-            print(
-                f"  #{i}: ref={r.referenceId}  "
-                f"qpos=({r.queryStartPosition:.1f},{r.queryEndPosition:.1f}) "
-                f"rpos=({r.referenceStartPosition:.1f},{r.referenceEndPosition:.1f}) "
-                f"ori={ori}  conf={r.confidence:.3f}"
-            )
-
-
-
-
-
     def effectiveQStart(self, row) -> float:
-        """
-        Efektywny 'początek' na query niezależnie od orientacji:
-        bierzemy minimum z (queryStartPosition, queryEndPosition).
-        Dzięki temu grupy trafiają do SmapResultRow w kolejności rosnącej
-        wzdłuż molekuły.
-        """
         qs = float(row.queryStartPosition)
         qe = float(row.queryEndPosition)
         return qs if qs <= qe else qe
 
     def groupAlignmentsByQuery(self) -> Dict[int, List]:
-        """
-        Zgrupuj wyrównania po molekule (queryId) i posortuj w obrębie grupy
-        po faktycznym początku na query (min(qStart, qEnd)), a następnie
-        po refId i RefStart (dla stabilności).
-        """
         groups: Dict[int, List] = defaultdict(list)
         for r in self.rows:
             groups[r.queryId].append(r)
@@ -507,8 +677,10 @@ class AlignmentResults:
         build_group = getattr(SmapResultRow, "from_alignment_group", None)
         has_factory = callable(build_group)
 
+        build_indel = getattr(SmapResultRow, "build_indel_row", None)
+        has_indel_builder = callable(build_indel)
+
         for qid, group_rows in groups.items():
-            self.debugPrintAlignmentGroup(qid, group_rows)
 
             if has_factory:
                 smap_list = build_group(qid, group_rows)
@@ -521,13 +693,26 @@ class AlignmentResults:
                     out.extend(smap_list)
                 else:
                     pass
-
             else:
                 for ar in group_rows:
                     sm = SmapResultRow.from_alignment_row(ar)
                     out.append(sm)
 
+            if has_indel_builder:
+                for ar in group_rows:
+                    try:
+                        indels = ar.indelList()
+                    except AttributeError:
+                        indels = []
+
+                    for indel in indels:
+                        try:
+                            out.append(SmapResultRow.build_indel_row(ar, indel))
+                        except Exception:
+                            continue
+
         return out
+
 
 
 class AlignmentResultRow(BenchmarkAlignment):
