@@ -25,6 +25,8 @@ def main():
                         "second cross-correlation run.")
     parser.add_argument("-pt", "--peakHeightThreshold", dest="peakHeightThreshold", type=float, default=27,
                         help="Minimum second cross-correlation peak height to qualify for aligned pairs search.")
+    parser.add_argument("-er", "--endReachingScore", dest="endReachingScore", type=int, default=0,
+                            help="Score value given to an alignment reaching query start or end.")
     parser.add_argument("-sc", "--segmentCombinePenalty", dest="segmentCombinePenalty", type=int, default=0,
                         help="Constant component of penalty for combining segment.")
     parser.add_argument("-sj", "--segmentJoinMultiplier", dest="segmentJoinMultiplier", type=float, default=1,
@@ -69,7 +71,7 @@ def main():
     parser.add_argument("-su", "--unmatchedPenalty", dest="unmatchedPenalty", type=int, default=-250,
                         help="Penalty to a segment score for each unpaired reference or query position.")
     parser.add_argument("-ms", "--minScore", dest="minScore", type=int, default=1000,
-                        help="Minimum score of a segment.")
+                        help="Minimum score of a segment/alignment.")
     parser.add_argument("-bs", "--breakSegmentThreshold", dest="breakSegmentThreshold", type=int, default=1200,
                         help="Alignment segments can be split into two if their score drops below this threshold.")
     parser.add_argument("-diff", "--maxDifference", dest="maxDifference", type=int, default=100000,
@@ -284,6 +286,7 @@ def run(args):
         "-diff", str(args.maxDifference),
         "-ma", str(args.secondaryMargin),
         "-pt", str(args.peakHeightThreshold),
+        "-er", str(args.endReachingScore),
         "-sc", str(args.segmentCombinePenalty),
         "-sj", str(args.segmentJoinMultiplier),
         "-ss", str(args.sequentialityScore),
