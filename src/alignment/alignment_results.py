@@ -275,8 +275,8 @@ class SmapResultRow:
             r.data["QryStartPos"] = float(a_qlo)
             r.data["QryEndPos"]   = float(b_qlo)
 
-            r.data["RefStartPos"] = float(cls.ref_at_qlo(A))
-            r.data["RefEndPos"]   = float(cls.ref_at_qlo(B))
+            r.data["RefStartPos"] = float(cls.ref_at_qhi(A))
+            r.data["RefEndPos"]   = float(cls.ref_at_qhi(B))
 
             r.data["SVsize"] = float(abs(a_qhi - a_qlo))
 
@@ -293,7 +293,7 @@ class SmapResultRow:
 
         r.data["XmapID1"] = cls.get_xmap_id(A)
         r.data["XmapID2"] = cls.get_xmap_id(B)
-        r.data["Confidence"] = 0.99 if sv_type not in ("duplication","duplication_split") else -1.0
+        r.data["Confidence"] = 0.99 if sv_type not in ("duplication_split") else -1.0
         r.data["Type"] = sv_type
         r.data["Orientation"] = orientation_str if str(sv_type).startswith("translocation") else None
 
@@ -335,17 +335,6 @@ class SmapResultRow:
         except Exception:
             mol_orientation = '+'
 
-
-        for i in range(n - 3):
-            if {i, i+1, i+2, i+3} & used:
-                continue
-            L, A, B, R = group_rows[i:i+4]
-            if cls.is_full_duplication_window(L, A, B, R):
-                row = cls.build_entry_pair(qid, A, B, sv_type="duplication", orientation_str=cls.ori_char(A))
-                row.data["LinkID"] = -1
-                out.append(row)
-                used.update({i, i+1, i+2, i+3})
-
         inv_pairs: List[tuple[Any, Any]] = []
         for i in range(n - 1):
             if {i, i+1} & used:
@@ -384,6 +373,19 @@ class SmapResultRow:
 
             r1 = cls.build_entry_pair(qid, A1, B1, sv_type="inversion_paired", orientation_str=None)
             r2 = cls.build_entry_pair(qid, A2, B2, sv_type="inversion_paired", orientation_str=None)
+
+            a1_rlo, a1_rhi = cls.ref_iv(A1)
+            b1_rlo, b1_rhi = cls.ref_iv(B1)
+            a2_rlo, a2_rhi = cls.ref_iv(A2)
+            b2_rlo, b2_rhi = cls.ref_iv(B2)
+
+            left_boundary  = float(min(a1_rhi, b1_rlo))
+            right_boundary = float(max(a2_rhi, b2_rlo))
+
+            r1.data["RefStartPos"] = left_boundary
+            r1.data["RefEndPos"]   = left_boundary
+            r2.data["RefStartPos"] = right_boundary
+            r2.data["RefEndPos"]   = right_boundary
 
             setattr(r1, "_link_peer_idx", None)
             setattr(r2, "_link_peer_idx", None)
@@ -615,21 +617,6 @@ class SmapResultRow:
     @classmethod
     def is_duplication_split_pair(cls, A: Any, B: Any) -> bool:
         return cls.same_ref_same_ori(A,B) and cls.overlap_or_close_on_ref(A,B) and cls.adjacent_on_qry(A,B)
-
-    @classmethod
-    def is_full_duplication_window(cls, L: Any, A: Any, B: Any, R: Any) -> bool:
-        if not cls.is_duplication_split_pair(A,B):
-            return False
-        rids = {cls.rid(x) for x in (L,A,B,R)}
-        if len(rids) != 1 or (None in rids):
-            return False
-        if not (cls.ori_char(L) == cls.ori_char(A) == cls.ori_char(B) == cls.ori_char(R)):
-            return False
-        if not (cls.adjacent_on_qry(L,A) and cls.adjacent_on_qry(A,B) and cls.adjacent_on_qry(B,R)):
-            return False
-        if cls.ends_proximity(L,A) > float(cls.SV_PROXIMITY_THR): return False
-        if cls.ends_proximity(B,R) > float(cls.SV_PROXIMITY_THR): return False
-        return True
 
     @classmethod
     def is_inversion_pair(cls, A, B) -> bool:
